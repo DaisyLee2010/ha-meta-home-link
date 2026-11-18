@@ -1,19 +1,34 @@
-"""Hub: owns the Muse link task and executes home.* commands in HA."""
+"""Hub: owns the Muse link task and executes home.* commands in HA.
+
+Two link owners: ``integration`` (this hub runs the Noise link
+itself) and ``addon`` (the Muse Gadget add-on runs the link; this
+hub pushes its exposed-device snapshot to the add-on, long-polls
+for ``home.*`` invokes, executes them here, and posts results back).
+"""
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
 import time
 
+import aiohttp
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
+from .addon_import import build_devices_payload
 from .const import (
+    CONF_ADDON_API_URL,
+    CONF_ADDON_TOKEN,
     CONF_EXPOSED_ENTITIES,
     CONF_FRIENDLY_NAMES,
+    CONF_LINK_OWNER,
     CONF_NAME,
     CONF_PAIRING,
     CONF_SDK_TOKEN,
+    DEFAULT_ADDON_API_URL,
     DEFAULT_NAME,
+    LINK_OWNER_ADDON,
 )
 from .exposure import (
     ExposureRegistry,
@@ -42,9 +57,26 @@ class MetaHomeLinkHub(DataUpdateCoordinator[dict]):
         self.entry = entry
         self._task = None
         self._client: MuseLinkClient | None = None
+        self._addon_session: aiohttp.ClientSession | None = None
+        self._addon_status: dict = {}
+        self._addon_last_payload: str = ""
         self._started = time.monotonic()
         self.status: str = "not_paired" if not valid_pairing(self.pairing) else "starting"
+        if self.link_owner == LINK_OWNER_ADDON:
+            self.status = "addon_starting"
         self.registry = self._build_registry()
+
+    @property
+    def link_owner(self) -> str:
+        return str(self._cfg.get(CONF_LINK_OWNER) or "integration")
+
+    @property
+    def addon_api_url(self) -> str:
+        return str(self._cfg.get(CONF_ADDON_API_URL) or DEFAULT_ADDON_API_URL).rstrip("/")
+
+    def _addon_headers(self) -> dict:
+        token = str(self._cfg.get(CONF_ADDON_TOKEN) or "")
+        return {"X-Gadget-Token": token} if token else {}
 
     # ------------------------------------------------------------ config
     @property
@@ -84,6 +116,11 @@ class MetaHomeLinkHub(DataUpdateCoordinator[dict]):
 
     # -------------------------------------------------------------- link
     async def async_start(self) -> None:
+        if self.link_owner == LINK_OWNER_ADDON:
+            self._task = self.entry.async_create_background_task(
+                self.hass, self._addon_loop(), name="meta_home_link_addon_link"
+            )
+            return
         if not valid_pairing(self.pairing):
             self.status = "not_paired"
             self.async_set_updated_data(self.snapshot())
@@ -109,6 +146,83 @@ class MetaHomeLinkHub(DataUpdateCoordinator[dict]):
         if self._task is not None:
             self._task.cancel()
             self._task = None
+        if self._addon_session is not None:
+            await self._addon_session.close()
+            self._addon_session = None
+
+    # ----------------------------------------------------- add-on channel
+    def _session(self) -> aiohttp.ClientSession:
+        if self._addon_session is None:
+            self._addon_session = aiohttp.ClientSession(
+                timeout=aiohttp.ClientTimeout(total=35))
+        return self._addon_session
+
+    async def _addon_loop(self) -> None:
+        """Push devices, poll invokes, post results — forever."""
+        while True:
+            try:
+                await self._push_devices()
+                async with self._session().get(
+                    f"{self.addon_api_url}/api/status", headers=self._addon_headers(),
+                ) as resp:
+                    if resp.status == 200:
+                        self._addon_status = await resp.json()
+                        self.status = str(self._addon_status.get("status") or "addon")
+                        self.async_set_updated_data(self.snapshot())
+                async with self._session().get(
+                    f"{self.addon_api_url}/api/invokes",
+                    params={"wait": "25"}, headers=self._addon_headers(),
+                ) as resp:
+                    if resp.status != 200:
+                        self.status = "addon_unreachable"
+                        self.async_set_updated_data(self.snapshot())
+                        await asyncio.sleep(5)
+                        continue
+                    data = await resp.json()
+                for invoke in data.get("invokes") or []:
+                    ok, payload, error = await self._handle_invoke(
+                        str(invoke.get("command", "")), invoke.get("params") or {})
+                    async with self._session().post(
+                        f"{self.addon_api_url}/api/invokes/{invoke.get('id')}/result",
+                        json={"ok": ok, "payload": payload, "error": error},
+                        headers=self._addon_headers(),
+                    ):
+                        pass
+            except asyncio.CancelledError:
+                raise
+            except Exception as err:  # noqa: BLE001 - retry loop
+                self.status = "addon_unreachable"
+                self._addon_status = {"last_error": f"{type(err).__name__}: {err}"}
+                _LOGGER.debug("add-on channel failed", exc_info=True)
+                self.async_set_updated_data(self.snapshot())
+                await asyncio.sleep(5)
+
+    async def _push_devices(self) -> None:
+        from homeassistant.const import __version__ as ha_version
+        self.registry = self._build_registry()
+        payload = build_devices_payload(
+            self.registry.devices, self.states_snapshot(), ha_version,
+            self.instance_name)
+        encoded = json.dumps(payload, sort_keys=True)
+        if encoded == self._addon_last_payload:
+            return
+        async with self._session().post(
+            f"{self.addon_api_url}/api/devices", json=payload,
+            headers=self._addon_headers(),
+        ) as resp:
+            if resp.status == 200:
+                self._addon_last_payload = encoded
+
+    async def async_send_chat(self, message: str) -> dict:
+        """Send one chat turn through whichever link owner is active."""
+        if self.link_owner == LINK_OWNER_ADDON:
+            async with self._session().post(
+                f"{self.addon_api_url}/api/chat", json={"message": message},
+                headers=self._addon_headers(),
+            ) as resp:
+                data = await resp.json()
+                return data if isinstance(data, dict) else {"error": "bad reply"}
+        return {"error": "Chat needs the Muse Gadget add-on as link owner."}
 
     def _save_pairing(self, pairing: dict) -> None:
         data = {**self.entry.data, CONF_PAIRING: pairing}
@@ -119,11 +233,20 @@ class MetaHomeLinkHub(DataUpdateCoordinator[dict]):
         self.async_set_updated_data(self.snapshot())
 
     def snapshot(self) -> dict:
+        if self.link_owner == LINK_OWNER_ADDON:
+            return {
+                "status": self.status,
+                "connected": bool(self._addon_status.get("connected")),
+                "exposed_count": len(self.registry.devices),
+                "last_error": self._addon_status.get("last_error"),
+                "link_owner": LINK_OWNER_ADDON,
+            }
         return {
             "status": self.status,
             "connected": bool(self._client and self._client.registered),
             "exposed_count": len(self.registry.devices),
             "last_error": self._client.last_error if self._client else None,
+            "link_owner": "integration",
         }
 
     async def _async_update_data(self) -> dict:

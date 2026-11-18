@@ -1,0 +1,14 @@
+send_message:
+  name: Send message to Muse
+  description: >-
+    Send one chat turn to Muse through the Muse Gadget add-on and
+    fire a meta_home_link_chat_reply event with the reply. Requires
+    the add-on link owner.
+  fields:
+    message:
+      name: Message
+      description: The message to send to Muse.
+      required: true
+      example: "Turn on the kitchen light"
+      selector:
+        text:

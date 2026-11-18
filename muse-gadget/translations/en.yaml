@@ -1,0 +1,16 @@
+configuration:
+  name:
+    name: Link name
+    description: Name shown to Muse for this home.
+  sdk_token:
+    name: Gadget SDK token
+    description: From gadgets.muse.ai/settings/sdk-tokens (starts with mgst_). Read the Gadget SDK Terms there first.
+  api_token:
+    name: API token
+    description: Shared secret between this add-on and the Meta Home Link integration. Set the same value in both.
+  api_port:
+    name: API port
+    description: Local API port. The integration connects here; do not expose it to the internet.
+  pair_on_start:
+    name: Open pairing on start
+    description: Advertise for Muse app pairing until this gadget is paired.

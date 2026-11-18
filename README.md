@@ -203,21 +203,50 @@ The BLE pairing-session crypto (protocol v5) is included in
 transport; this integration does not advertise a BLE peripheral
 itself.
 
-## Install
+## Install (HACS + add-on)
 
-### HACS (recommended, easiest)
+Two pieces, installed in this order: the **Muse Gadget add-on**
+(Home Assistant add-on store — this makes the host a Muse gadget
+and pairs it) and the **Meta Home Link integration** (HACS — this
+imports the add-on's pairing and exposes your devices). The
+integration also works without the add-on; then pairing is the
+manual flow further down ("Pairing in detail").
 
-1. In Home Assistant, open HACS → Integrations → ⋮ (top right) →
-   **Custom repositories**.
-2. Paste this repository's GitHub URL, choose category
-   **Integration**, and add it.
-3. Find **Meta Home Link** in HACS, install it, then restart
-   Home Assistant.
+### Step 1 — Muse Gadget add-on (add-on store, not HACS)
+
+1. Settings → Add-ons → Add-on Store → ⋮ (top right) →
+   **Repositories**.
+2. Add `https://github.com/DaisyLee2010/ha-meta-home-link` and
+   close the dialog; **Muse Gadget** appears in the store.
+3. Open **Muse Gadget** → Install → set an **API token** (any
+   long random string) and your Gadget SDK token under
+   Configuration → Start. Open its web UI: it shows the
+   `MuseGadgetXXXXXX` name and pairing state. Details:
+   [DOCS.md](muse-gadget/DOCS.md).
+4. Pair it in the Muse app (Settings → Devices → Developer mode
+   on → Add Device → pick that name). The add-on page flips to
+   Paired and writes its pairing to `/share/muse-gadget/`.
+
+### Step 2 — Meta Home Link integration (HACS)
+
+1. Open HACS → ⋮ (top right) → **Custom repositories**.
+2. Repository: `https://github.com/DaisyLee2010/ha-meta-home-link`,
+   category **Integration** → Add.
+3. Find **Meta Home Link** in HACS → **Download** (pick the latest
+   release, v1.1.0 or newer) → restart Home Assistant when HACS
+   asks.
 4. Settings → Devices & services → **Add integration** →
-   **Meta Home Link** (see Set up below).
+   **Meta Home Link**. With the add-on paired, the pairing is
+   **imported automatically** — no pasted JSON: choose the
+   "Muse Gadget add-on" link owner, enter the same API token as
+   in the add-on, then pick your exposed devices and friendly
+   names (see Set up below).
 
-HACS installs from the release zip (`meta_home_link.zip`), so
-updates arrive through HACS like any other integration.
+HACS installs from the release zip (`meta_home_link.zip`, attached
+to each GitHub release), so updates arrive through HACS like any
+other integration. Adding this repo to HACS as a custom repository
+is the install path until/unless it is accepted into the HACS
+default store — the steps above work today either way.
 
 ### Release zip (no HACS)
 
@@ -245,8 +274,8 @@ Settings → Devices & services → **Add integration** → **Meta Home Link**:
 
 | Step | What to enter |
 |---|---|
-| 1. Link | A name for this home/link, and your SDK token (`mgst_…`). |
-| 2. Pairing credentials | Paste the whole `pairing.json`, and below it the whole `identity.json`, from the pairing machine's `/var/lib/musegadget/` — see Pairing in detail above. |
+| 1. Link | A name for this home/link, your SDK token (`mgst_…`), who owns the link ("Muse Gadget add-on" if you installed it, with its API URL/token), |
+| 2. Pairing credentials | Skipped when the add-on has paired (imported from `/share/muse-gadget/`). Otherwise paste the whole `pairing.json`, and below it the whole `identity.json`, from the pairing machine's `/var/lib/musegadget/` — see Pairing in detail above. |
 | 3. Devices exposed to Muse | Pick exactly which entities Muse may see and control. |
 | 4. Friendly names | One box per picked device: keep its Home Assistant name, or type a friendlier one. Clearing a box falls back to the Home Assistant name. |
 
@@ -294,8 +323,10 @@ with current states, and tells it not to guess unlisted devices.
 
 ## Limitations
 
-- v1 imports pairing credentials as JSON; it does not advertise
-  BLE for pairing itself (see Pairing above).
+- Without the add-on, this integration imports pairing
+  credentials as JSON and does not advertise BLE for pairing
+  itself (see Pairing above). The Muse Gadget add-on does
+  advertise BLE and pairs in place.
 - Muse asks for states when it needs them (`home.get_state` /
   `home.list_devices`); state changes are not pushed to Muse.
 - One link per config entry. Add the integration again for a

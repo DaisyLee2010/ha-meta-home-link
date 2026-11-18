@@ -20,17 +20,24 @@ from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
 
+from .addon_import import load_addon_share
 from .config_helpers import merge_friendly_names, parse_identity, parse_pairing_credentials, valid_sdk_token
 from .const import (
+    CONF_ADDON_API_URL,
+    CONF_ADDON_TOKEN,
     CONF_EXPOSED_ENTITIES,
     CONF_FRIENDLY_NAMES,
     CONF_IDENTITY_JSON,
+    CONF_LINK_OWNER,
     CONF_MAC,
     CONF_NAME,
     CONF_PAIRING,
     CONF_SDK_TOKEN,
+    DEFAULT_ADDON_API_URL,
     DEFAULT_NAME,
     DOMAIN,
+    LINK_OWNER_ADDON,
+    LINK_OWNER_INTEGRATION,
     SUPPORTED_DOMAINS,
 )
 from .muse_link import generate_identity
@@ -71,24 +78,51 @@ class MetaHomeLinkConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._sdk_token = ""
         self._pairing: dict | None = None
         self._imported_mac: str | None = None
+        self._link_owner = LINK_OWNER_INTEGRATION
+        self._addon_api_url = DEFAULT_ADDON_API_URL
+        self._addon_token = ""
         self._exposed: list[str] = []
         self._friendly_names: dict[str, str] = {}
 
     # ------------------------------------------------------------- steps
     async def async_step_user(self, user_input: dict | None = None) -> FlowResult:
         errors: dict[str, str] = {}
+        addon = load_addon_share()
         if user_input is not None:
             self._name = (user_input.get(CONF_NAME) or DEFAULT_NAME).strip() or DEFAULT_NAME
             self._sdk_token = (user_input.get(CONF_SDK_TOKEN) or "").strip()
+            self._link_owner = str(user_input.get(CONF_LINK_OWNER) or self._link_owner)
+            self._addon_api_url = (
+                user_input.get(CONF_ADDON_API_URL) or DEFAULT_ADDON_API_URL).strip()
+            self._addon_token = (user_input.get(CONF_ADDON_TOKEN) or "").strip()
             if self._sdk_token and not valid_sdk_token(self._sdk_token):
                 errors[CONF_SDK_TOKEN] = "sdk_token_invalid"
             if not errors:
+                # Add-on already paired: import its pairing and skip the
+                # paste step entirely. The add-on owns the link unless
+                # the user picked otherwise above.
+                if addon is not None and self._link_owner == LINK_OWNER_ADDON:
+                    self._pairing = addon.pairing
+                    self._imported_mac = addon.mac
+                    return await self.async_step_devices()
                 # No unique id: each entry creates its own gadget
                 # identity at create time, so multiple links can coexist.
                 return await self.async_step_credentials()
+        if addon is not None:
+            self._link_owner = LINK_OWNER_ADDON
         schema = vol.Schema({
             vol.Required(CONF_NAME, default=self._name): selector.TextSelector(),
             vol.Optional(CONF_SDK_TOKEN, default=self._sdk_token): selector.TextSelector(
+                selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
+            ),
+            vol.Optional(CONF_LINK_OWNER, default=self._link_owner): selector.SelectSelector(
+                selector.SelectSelectorConfig(options=[
+                    {"value": LINK_OWNER_ADDON, "label": "Muse Gadget add-on (recommended)"},
+                    {"value": LINK_OWNER_INTEGRATION, "label": "This integration (paste pairing)"},
+                ])
+            ),
+            vol.Optional(CONF_ADDON_API_URL, default=self._addon_api_url): selector.TextSelector(),
+            vol.Optional(CONF_ADDON_TOKEN, default=self._addon_token): selector.TextSelector(
                 selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
             ),
         })
@@ -148,6 +182,9 @@ class MetaHomeLinkConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             CONF_SDK_TOKEN: self._sdk_token,
             CONF_PAIRING: self._pairing or {},
             CONF_MAC: mac,
+            CONF_LINK_OWNER: self._link_owner,
+            CONF_ADDON_API_URL: self._addon_api_url,
+            CONF_ADDON_TOKEN: self._addon_token,
             CONF_EXPOSED_ENTITIES: self._exposed,
             CONF_FRIENDLY_NAMES: self._friendly_names,
         }

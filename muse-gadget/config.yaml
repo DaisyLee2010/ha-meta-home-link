@@ -1,0 +1,45 @@
+name: Muse Gadget
+version: 1.1.0
+slug: muse-gadget
+description: >-
+  Turn Home Assistant into a Muse gadget: BLE pairing with the Muse
+  app, the Noise gadget link, home control, and chat/voice — the Meta
+  Home Link integration imports its pairing from this add-on.
+url: https://github.com/DaisyLee2010/ha-meta-home-link
+arch:
+  - aarch64
+  - armv7
+  - armhf
+  - amd64
+init: false
+startup: application
+boot: auto
+host_network: true
+host_dbus: true
+privileged:
+  - NET_ADMIN
+  - SYS_ADMIN
+apparmor: false
+map:
+  - share:rw
+options:
+  name: Home Assistant
+  sdk_token: ""
+  api_token: ""
+  api_port: 8099
+  pair_on_start: true
+schema:
+  name: str
+  sdk_token: password
+  api_token: password
+  api_port: port
+  pair_on_start: bool
+ports:
+  8099/tcp: null
+ports_description:
+  8099/tcp: Muse Gadget local API (integration channel; keep unexposed)
+ingress: true
+ingress_port: 8099
+panel_icon: mdi:robot-happy
+environment:
+  LOG_LEVEL: info

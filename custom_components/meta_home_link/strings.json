@@ -3,15 +3,18 @@
     "step": {
       "user": {
         "title": "Meta Home Link",
-        "description": "Name this link and add your Muse Gadget SDK token from gadgets.muse.ai/settings/sdk-tokens (starts with mgst_). Read the Gadget SDK Terms there first.",
+        "description": "Name this link and add your Muse Gadget SDK token from gadgets.muse.ai/settings/sdk-tokens (starts with mgst_). If the Muse Gadget add-on has already paired, its pairing is imported automatically and the credentials step is skipped. Read the Gadget SDK Terms there first.",
         "data": {
           "name": "Link name (shown to Muse as this home's name)",
-          "sdk_token": "Gadget SDK token (mgst_..., optional until pairing)"
+          "sdk_token": "Gadget SDK token (mgst_..., optional until pairing)",
+          "link_owner": "Who owns the Muse link",
+          "addon_api_url": "Muse Gadget add-on API URL",
+          "addon_token": "Add-on API token (same as in the add-on options)"
         }
       },
       "credentials": {
         "title": "Pairing credentials",
-        "description": "Paste the whole contents of pairing.json first (required). Below it, paste the whole contents of identity.json from the same /var/lib/musegadget/ folder \u2014 the pairing tokens were issued for that identity, so Home Assistant must present the same node id. See 'Pairing in detail' in the README for exactly where these files are and how to create them. Both are stored only in this config entry.",
+        "description": "Paste the whole contents of pairing.json first (required). Below it, paste the whole contents of identity.json from the same folder. With the Muse Gadget add-on this step is skipped: the pairing is imported from /share/muse-gadget/ instead. Both are stored only in this config entry.",
         "data": {
           "pairing": "Pairing credentials (JSON)",
           "identity_json": "Identity (identity.json contents, strongly recommended)"
@@ -54,6 +57,18 @@
         "title": "Friendly names",
         "description": "The name in each box is what Muse will hear and match on (for example 'Kitchen light'). Leave a box as-is to keep the Home Assistant name, or type a friendlier one.",
         "data": {}
+      }
+    }
+  },
+  "services": {
+    "send_message": {
+      "name": "Send message to Muse",
+      "description": "Send one chat turn to Muse through the Muse Gadget add-on and fire a meta_home_link_chat_reply event with the reply.",
+      "fields": {
+        "message": {
+          "name": "Message",
+          "description": "The message to send to Muse."
+        }
       }
     }
   }
