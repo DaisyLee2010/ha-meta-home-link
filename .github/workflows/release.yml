@@ -12,9 +12,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Zip the integration for manual / HACS zip installs
+        # HACS extracts a zip_release asset straight into
+        # custom_components/meta_home_link/, so manifest.json must be
+        # at the zip root - no wrapping folder.
         run: |
-          cd custom_components
-          zip -r ../meta_home_link.zip meta_home_link
+          cd custom_components/meta_home_link
+          zip -r ../../meta_home_link.zip .
       - name: Attach zip to the release
         uses: softprops/action-gh-release@v2
         with:

@@ -79,8 +79,9 @@ updates arrive through HACS like any other integration.
 
 1. Download `meta_home_link.zip` from this repository's
    **Releases** page.
-2. Unzip it so you have `config/custom_components/meta_home_link/`
-   on your Home Assistant host.
+2. Create `config/custom_components/meta_home_link/` on your
+   Home Assistant host and unzip the download into that folder
+   (the zip holds `manifest.json` at its root, ready to drop in).
 3. Restart Home Assistant, then add the integration as above.
 
 ### Git clone (for tinkering)
