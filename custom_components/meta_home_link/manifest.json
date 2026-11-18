@@ -1,0 +1,13 @@
+{
+  "domain": "meta_home_link",
+  "name": "Meta Home Link",
+  "codeowners": ["@DaisyLee2010"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/DaisyLee2010/ha-meta-home-link",
+  "integration_type": "hub",
+  "iot_class": "cloud_push",
+  "issue_tracker": "https://github.com/DaisyLee2010/ha-meta-home-link/issues",
+  "requirements": [],
+  "version": "1.0.0"
+}

@@ -1,0 +1,18 @@
+Meta Home Link
+==============
+
+Portions of this project are ports of the Muse Gadget SDK
+(https://github.com/facebookincubator/muse-gadget-sdk), licensed
+under the Apache License 2.0:
+
+- proto.py, noise.py: Noise transport envelope and Noise_XX_25519_AESGCM_SHA256
+  (SDK: linux/src/musegadget/noise/)
+- pairing.py: BLE pairing protocol v5, community / confirm_app
+  (SDK: linux/src/musegadget/{pairing,ble_setup,ble_framing}.py)
+- muse_link.py: fetch_vms, token refresh, Noise session, link.register
+  (SDK: Linux device client session layer)
+
+This project is a community integration. It is not affiliated with
+or endorsed by Meta. "Meta", "Muse" and "Home Link" are trademarks
+of their respective owners; they are used here only to describe
+interoperability.

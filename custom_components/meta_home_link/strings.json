@@ -1,0 +1,58 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Meta Home Link",
+        "description": "Name this link and add your Muse Gadget SDK token from gadgets.muse.ai/settings/sdk-tokens (starts with mgst_). Read the Gadget SDK Terms there first.",
+        "data": {
+          "name": "Link name (shown to Muse as this home's name)",
+          "sdk_token": "Gadget SDK token (mgst_..., optional until pairing)"
+        }
+      },
+      "credentials": {
+        "title": "Pairing credentials",
+        "description": "Paste the device credentials JSON the Muse app issued when this link was paired (access_token and refresh_token required; api_url_v2 and noise_host optional). See the integration README for how to pair and copy them. Credentials are stored only in Home Assistant's config entry.",
+        "data": {
+          "pairing": "Pairing credentials (JSON)"
+        }
+      },
+      "devices": {
+        "title": "Devices exposed to Muse",
+        "description": "Pick exactly which devices Muse may see and control. Anything not picked here is invisible to Muse. You can change this later in Configure.",
+        "data": {
+          "exposed_entities": "Exposed devices"
+        }
+      },
+      "friendly_names": {
+        "title": "Friendly names",
+        "description": "The name in each box is what Muse will hear and match on (for example 'Kitchen light'). Leave a box as-is to keep the Home Assistant name, or type a friendlier one. Clear a box to fall back to the Home Assistant name.",
+        "data": {}
+      }
+    },
+    "error": {
+      "sdk_token_invalid": "That does not look like an SDK token - it starts with mgst_",
+      "credentials_required": "Paste the pairing credentials JSON",
+      "credentials_invalid": "That is not valid JSON",
+      "credentials_incomplete": "The JSON needs both access_token and refresh_token"
+    },
+    "abort": {
+      "already_configured": "This link is already configured"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Devices exposed to Muse",
+        "description": "Pick exactly which devices Muse may see and control. Anything not picked here is invisible to Muse.",
+        "data": {
+          "exposed_entities": "Exposed devices"
+        }
+      },
+      "friendly_names": {
+        "title": "Friendly names",
+        "description": "The name in each box is what Muse will hear and match on (for example 'Kitchen light'). Leave a box as-is to keep the Home Assistant name, or type a friendlier one.",
+        "data": {}
+      }
+    }
+  }
+}

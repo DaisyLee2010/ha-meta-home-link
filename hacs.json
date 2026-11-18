@@ -1,0 +1,7 @@
+{
+  "name": "Meta Home Link",
+  "filename": "meta_home_link.zip",
+  "homeassistant": "2024.6.0",
+  "render_readme": true,
+  "zip_release": true
+}

@@ -1,0 +1,23 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+  push:
+    tags: ["v*"]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Zip the integration for manual / HACS zip installs
+        run: |
+          cd custom_components
+          zip -r ../meta_home_link.zip meta_home_link
+      - name: Attach zip to the release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: meta_home_link.zip
