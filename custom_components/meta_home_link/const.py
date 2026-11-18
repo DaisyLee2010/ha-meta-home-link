@@ -1,7 +1,7 @@
 """Constants for the Meta Home Link (Muse gadget) integration."""
 
 DOMAIN = "meta_home_link"
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 
 CONF_NAME = "name"
 CONF_SDK_TOKEN = "sdk_token"
