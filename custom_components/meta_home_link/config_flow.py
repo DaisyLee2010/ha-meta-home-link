@@ -20,10 +20,11 @@ from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
 
-from .config_helpers import merge_friendly_names, parse_pairing_credentials, valid_sdk_token
+from .config_helpers import merge_friendly_names, parse_identity, parse_pairing_credentials, valid_sdk_token
 from .const import (
     CONF_EXPOSED_ENTITIES,
     CONF_FRIENDLY_NAMES,
+    CONF_IDENTITY_JSON,
     CONF_MAC,
     CONF_NAME,
     CONF_PAIRING,
@@ -69,6 +70,7 @@ class MetaHomeLinkConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._name = DEFAULT_NAME
         self._sdk_token = ""
         self._pairing: dict | None = None
+        self._imported_mac: str | None = None
         self._exposed: list[str] = []
         self._friendly_names: dict[str, str] = {}
 
@@ -96,13 +98,20 @@ class MetaHomeLinkConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
         if user_input is not None:
             pairing, error = parse_pairing_credentials(user_input.get(CONF_PAIRING))
+            mac, identity_error = parse_identity(user_input.get(CONF_IDENTITY_JSON))
             if error is not None:
                 errors[CONF_PAIRING] = error
-            else:
+            if identity_error is not None:
+                errors[CONF_IDENTITY_JSON] = identity_error
+            if not errors:
                 self._pairing = pairing
+                self._imported_mac = mac
                 return await self.async_step_devices()
         schema = vol.Schema({
             vol.Required(CONF_PAIRING): selector.TextSelector(
+                selector.TextSelectorConfig(multiline=True)
+            ),
+            vol.Optional(CONF_IDENTITY_JSON): selector.TextSelector(
                 selector.TextSelectorConfig(multiline=True)
             ),
         })
@@ -130,12 +139,15 @@ class MetaHomeLinkConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     def _create_entry(self) -> FlowResult:
-        identity = generate_identity()
+        # Prefer the identity the pairing was issued for (imported from
+        # the SDK client's identity.json); only mint a fresh one when
+        # the user pasted credentials without an identity.
+        mac = self._imported_mac or generate_identity().mac
         data = {
             CONF_NAME: self._name,
             CONF_SDK_TOKEN: self._sdk_token,
             CONF_PAIRING: self._pairing or {},
-            CONF_MAC: identity.mac,
+            CONF_MAC: mac,
             CONF_EXPOSED_ENTITIES: self._exposed,
             CONF_FRIENDLY_NAMES: self._friendly_names,
         }

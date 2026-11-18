@@ -11,9 +11,10 @@
       },
       "credentials": {
         "title": "Pairing credentials",
-        "description": "Paste the device credentials JSON the Muse app issued when this link was paired (access_token and refresh_token required; api_url_v2 and noise_host optional). See the integration README for how to pair and copy them. Credentials are stored only in Home Assistant's config entry.",
+        "description": "Paste the whole contents of pairing.json first (required). Below it, paste the whole contents of identity.json from the same /var/lib/musegadget/ folder \u2014 the pairing tokens were issued for that identity, so Home Assistant must present the same node id. See 'Pairing in detail' in the README for exactly where these files are and how to create them. Both are stored only in this config entry.",
         "data": {
-          "pairing": "Pairing credentials (JSON)"
+          "pairing": "Pairing credentials (JSON)",
+          "identity_json": "Identity (identity.json contents, strongly recommended)"
         }
       },
       "devices": {
@@ -33,7 +34,8 @@
       "sdk_token_invalid": "That does not look like an SDK token - it starts with mgst_",
       "credentials_required": "Paste the pairing credentials JSON",
       "credentials_invalid": "That is not valid JSON",
-      "credentials_incomplete": "The JSON needs both access_token and refresh_token"
+      "credentials_incomplete": "The JSON needs both access_token and refresh_token",
+      "identity_invalid": "That identity.json does not contain a valid mac"
     },
     "abort": {
       "already_configured": "This link is already configured"

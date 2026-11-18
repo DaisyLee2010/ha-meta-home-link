@@ -88,7 +88,7 @@ class MetaHomeLinkHub(DataUpdateCoordinator[dict]):
             self.status = "not_paired"
             self.async_set_updated_data(self.snapshot())
             return
-        identity = Identity(self._cfg["mac"])
+        identity = Identity(self._cfg["mac"], self.pairing.get("node_id"))
         self._client = MuseLinkClient(
             pairing=self.pairing,
             identity=identity,

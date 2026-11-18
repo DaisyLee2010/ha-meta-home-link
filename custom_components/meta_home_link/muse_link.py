@@ -30,6 +30,7 @@ USER_AGENT = f"musegadget/{VERSION} (Meta Home Link; Home Assistant)"
 @dataclass(frozen=True)
 class Identity:
     mac: str
+    paired_node_id: str | None = None
 
     @property
     def suffix(self) -> str:
@@ -37,7 +38,9 @@ class Identity:
 
     @property
     def node_id(self) -> str:
-        return f"homelink-{self.suffix}"
+        # Tokens are issued for the pairing's stored node id when there
+        # is one; older pairings keep the legacy homelink- id.
+        return self.paired_node_id or f"homelink-{self.suffix}"
 
     @property
     def device_id(self) -> str:

@@ -6,7 +6,7 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.hkdf import HKDFExpand
 
-from meta_home_link.config_helpers import merge_friendly_names, parse_pairing_credentials, valid_sdk_token
+from meta_home_link.config_helpers import merge_friendly_names, parse_identity, parse_pairing_credentials, valid_sdk_token
 from meta_home_link.muse_link import Identity, generate_identity
 from meta_home_link.noise import hkdf_full, sha256
 from meta_home_link.pairing import ChunkAssembler, PairingSession, b64url, b64url_decode, encode_chunks
@@ -95,6 +95,23 @@ def test_parse_pairing_credentials():
     assert parse_pairing_credentials("not json")[1] == "credentials_invalid"
     assert parse_pairing_credentials('{"access_token":"a"}')[1] == "credentials_incomplete"
     assert valid_sdk_token("mgst_123456789") and not valid_sdk_token("nope")
+
+
+def test_pairing_keeps_stored_node_id_and_identity_import():
+    pairing, err = parse_pairing_credentials(
+        '{"access_token":"a","refresh_token":"r","node_id":"homelink-a1b2c3"}')
+    assert err is None and pairing["node_id"] == "homelink-a1b2c3"
+    # A node id in the wrong shape is dropped, not trusted.
+    pairing, _ = parse_pairing_credentials(
+        '{"access_token":"a","refresh_token":"r","node_id":"bogus"}')
+    assert "node_id" not in pairing
+    assert parse_identity('{"mac":"AA:BB:CC:DD:EE:FF"}') == ("aa:bb:cc:dd:ee:ff", None)
+    assert parse_identity("") == (None, None)  # blank: fresh identity is minted
+    assert parse_identity('{"mac":"nope"}') == (None, "identity_invalid")
+    assert parse_identity("not json") == (None, "identity_invalid")
+    # Registration presents the pairing's node id, not a fresh one.
+    assert Identity("aa:bb:cc:dd:ee:ff", "gadget-a1b2c3").node_id == "gadget-a1b2c3"
+    assert Identity("aa:bb:cc:dd:ee:ff").node_id == "homelink-ddeeff"
 
 
 def test_merge_friendly_names():
